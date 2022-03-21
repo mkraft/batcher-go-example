@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -32,7 +33,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(10 * time.Second)
-		fmt.Println("cancelling...")
+		log.Print("server triggered a cancellation")
 		cancel()
 	}()
 
@@ -40,6 +41,7 @@ func main() {
 
 	// simulate someone joining teamA
 	go func() {
+		log.Print("server publishing a teamJoin event")
 		myProxy.publish(&event{
 			name:   teamJoin,
 			teamID: "teamA",
@@ -49,6 +51,7 @@ func main() {
 
 	// simulate multiple people joining teamB
 	for range time.Tick(time.Second) {
+		log.Print("server publishing a teamJoin event")
 		myProxy.publish(&event{
 			name:   teamJoin,
 			teamID: "teamB",

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"math/rand"
 )
 
@@ -25,7 +25,7 @@ type app struct{}
 
 // publish simulates an app method that is invoked by backend clients to publish websocket events
 func (a *app) publish(evt *event) {
-	fmt.Printf("%s: %+v\n", evt.name, evt)
+	log.Printf("event sent to clients: %s, %+v\n", evt.name, evt)
 }
 
 // batchTeamJoins is some example business logic about how to combine multiple
