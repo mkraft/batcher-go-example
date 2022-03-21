@@ -28,6 +28,8 @@ func (a *app) publish(evt *event) {
 	fmt.Printf("%s: %+v\n", evt.name, evt)
 }
 
+// batchTeamJoins is some example business logic about how to combine multiple
+// teamJoin events into a single multipleTeamJoins event.
 func batchTeamJoins(events []*event) *event {
 	out := &event{
 		name: multipleTeamJoins,
@@ -47,6 +49,7 @@ func batchTeamJoins(events []*event) *event {
 	return out
 }
 
+// randomeString is used for generating fake user ids in the example app
 func randomString(n int) string {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	s := make([]rune, n)
