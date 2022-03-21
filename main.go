@@ -49,7 +49,7 @@ func main() {
 		})
 	}()
 
-	// simulate someone joining teamA
+	// simulate some event that doesn't use the handlers
 	go func() {
 		log.Print("server publishing an event without a handler")
 		myProxy.publish(&event{name: "foobar"})
