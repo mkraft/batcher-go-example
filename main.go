@@ -49,6 +49,12 @@ func main() {
 		})
 	}()
 
+	// simulate someone joining teamA
+	go func() {
+		log.Print("server publishing an event without a handler")
+		myProxy.publish(&event{name: "foobar"})
+	}()
+
 	// simulate multiple people joining teamB
 	for range time.Tick(time.Second) {
 		log.Print("server publishing a teamJoin event")
