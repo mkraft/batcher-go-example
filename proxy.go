@@ -63,8 +63,8 @@ func (p *proxy) listenAndServeHandlers(ctx context.Context, handlers []*handler,
 						select {
 						case <-queueDone:
 							mu.Lock()
-							defer mu.Unlock()
 							delete(queues, name)
+							mu.Unlock()
 							wg.Done()
 						}
 					}(queueName)
