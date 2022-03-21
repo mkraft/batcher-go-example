@@ -50,13 +50,17 @@ func (p *proxy) listenAndServeHandlers(ctx context.Context, handlers []*handler,
 
 				evtHasHandler = true
 
+				mu.Lock()
 				queueIn, queueExists := queues[queueName]
+				mu.Unlock()
 				if !queueExists {
 					queueIn = make(chan *event, handler.maxSize)
 					queueDone := make(chan bool)
 					wg.Add(1)
 					go handleQueue(ctx, queueIn, out, queueDone, handler.waitDuration, handler.maxSize, handler.batchReducer)
+					mu.Lock()
 					queues[queueName] = queueIn
+					mu.Unlock()
 
 					// wait for queue done channel
 					go func(name string) {

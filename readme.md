@@ -6,7 +6,6 @@ go run .
 
 TODO:
 
-- [ ] fix data race as seen with `go run -race .`
 - [ ] test
 - [ ] do I need to notify the backend client that the proxy is stopped or is the context interface enough?
 - [ ] is there a better way of controlling shared access to the `queues map[string]chan *event` other than the `sync.Mutex`?
