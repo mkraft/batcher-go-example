@@ -47,7 +47,7 @@ func (p *proxy) startCoordinator(ctx context.Context, handlers []*handler, out c
 			for _, handler := range handlers {
 				queueName, matchesHandler := handler.matchCriteria(e)
 				if !matchesHandler {
-					break
+					continue
 				}
 
 				evtHasHandler = true
