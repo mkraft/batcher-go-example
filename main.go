@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 )
 
@@ -31,13 +32,21 @@ func main() {
 	myApp := &app{}
 
 	ctx, cancel := context.WithCancel(context.Background())
+
+	myProxy, done := newProxy(ctx, myApp, handlers)
+
 	go func() {
 		time.Sleep(10 * time.Second)
 		log.Print("server triggered a cancellation")
 		cancel()
+		for {
+			select {
+			case <-done:
+				os.Exit(0)
+				return
+			}
+		}
 	}()
-
-	myProxy, _ := newProxy(ctx, myApp, handlers)
 
 	// simulate someone joining teamA
 	go func() {
