@@ -7,6 +7,8 @@ go run .
 TODO:
 
 - [ ] test
+- [ ] probably some refactoring related to testability 
+- [ ] benchmark
 - [ ] rename some things 
 - [ ] remove duplication 
 - [ ] do I need to notify the backend client that the proxy is stopped or is the context interface enough?
