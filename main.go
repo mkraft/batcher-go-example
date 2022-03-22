@@ -37,7 +37,7 @@ func main() {
 		cancel()
 	}()
 
-	myProxy := newProxy(ctx, myApp, handlers)
+	myProxy, _ := newProxy(ctx, myApp, handlers)
 
 	// simulate someone joining teamA
 	go func() {

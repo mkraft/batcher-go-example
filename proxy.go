@@ -34,7 +34,7 @@ type proxy struct {
 	in chan *event
 }
 
-func (p *proxy) startCoordinator(ctx context.Context, handlers []*handler, out chan []*event) {
+func (p *proxy) startCoordinator(ctx context.Context, handlers []*handler, out chan []*event, done chan bool) {
 	var wg sync.WaitGroup
 	mu := sync.Mutex{}
 	queues := make(map[string]chan *event)
@@ -89,18 +89,20 @@ func (p *proxy) startCoordinator(ctx context.Context, handlers []*handler, out c
 		case <-ctx.Done():
 			// wait until all of the named queues are done
 			wg.Wait()
+			done <- true
 			log.Print("orchestrator done: context")
 			return
 		}
 	}
 }
 
-func newProxy(ctx context.Context, pub publisher, handlers []*handler) *proxy {
+func newProxy(ctx context.Context, pub publisher, handlers []*handler) (*proxy, chan bool) {
 	out := make(chan []*event)
+	done := make(chan bool)
 	newProxy := &proxy{in: make(chan *event)}
-	go newProxy.startCoordinator(ctx, handlers, out)
+	go newProxy.startCoordinator(ctx, handlers, out, done)
 	go listenForOutEvents(out, pub)
-	return newProxy
+	return newProxy, done
 }
 
 func listenForOutEvents(out chan []*event, pub publisher) {

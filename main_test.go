@@ -1,7 +1,12 @@
 package main
 
 import (
+	"context"
 	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testApp struct {
@@ -10,61 +15,129 @@ type testApp struct {
 }
 
 func (t *testApp) publish(evt *event) {
+	t.addEvent(evt)
+}
+
+func (t *testApp) addEvent(evt *event) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.events = append(t.events, evt)
 }
 
-func (t *testApp) reset() {
-	t.events = []*event{}
+func (t *testApp) getEvents() []*event {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.events
 }
 
-// func TestPublish(t *testing.T) {
-// 	fakeApp := &testApp{}
+func TestPublish(t *testing.T) {
+	t.Run("an event without a handler bypasses the reducer", func(t *testing.T) {
+		fakeApp := &testApp{}
+		fakeEvtName := eventType("fakeevent")
+		ctx, cancel := context.WithCancel(context.Background())
+		prox, done := newProxy(ctx, fakeApp, []*handler{})
+		eventWithoutHandler := &event{name: fakeEvtName}
+		prox.publish(eventWithoutHandler)
+		cancel()
+		for {
+			select {
+			case <-done:
+				require.Equal(t, fakeApp.getEvents()[0].name, fakeEvtName)
+				return
+			}
+		}
+	})
 
-// 	// fakeReducer just returns the first event with the message changed for testing
-// 	fakeReducer := func(events []*event) *event {
-// 		first := events[0]
-// 		first.messages[0] = fmt.Sprintf("proxied_%s", first.messages[0])
-// 		return first
-// 	}
+	t.Run("single event get published as-is after timeout", func(t *testing.T) {
+		fakeApp := &testApp{}
+		fakeEvtName := eventType("fakeevent")
+		testHandler := &handler{
+			maxSize:      100,
+			waitDuration: time.Millisecond,
+			matchCriteria: func(evt *event) (string, bool) {
+				if evt.name != fakeEvtName {
+				}
+				return "testQueue", true
+			},
+			batchReducer: func(events []*event) []*event {
+				return []*event{{name: "shouldnotget"}}
+			},
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		prox, done := newProxy(ctx, fakeApp, []*handler{testHandler})
+		eventWithHandler := &event{name: fakeEvtName}
+		prox.publish(eventWithHandler)
+		time.Sleep(10 * time.Millisecond) // to be after the timeout
+		cancel()
+		for {
+			select {
+			case <-done:
+				require.Equal(t, fakeApp.getEvents()[0].name, fakeEvtName)
+				return
+			}
+		}
+	})
 
-// 	handlers := map[eventType]eventHandler{
-// 		typing: eventHandlerFunc(0, typing, 100, fakeReducer),
-// 	}
-// 	prox := newProxy(context.Background(), fakeApp, handlers)
+	t.Run("multiple events go through the reducer after timeout", func(t *testing.T) {
+		fakeApp := &testApp{}
+		fakeEvtName := eventType("shouldnotget")
+		fakeEvtMultipleName := eventType("fakeeventmultiple")
+		testHandler := &handler{
+			maxSize:      100,
+			waitDuration: time.Millisecond,
+			matchCriteria: func(evt *event) (string, bool) {
+				if evt.name != fakeEvtName {
+				}
+				return "testQueue", true
+			},
+			batchReducer: func(events []*event) []*event {
+				return []*event{{name: fakeEvtMultipleName}}
+			},
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		prox, done := newProxy(ctx, fakeApp, []*handler{testHandler})
+		eventWithHandler := &event{name: fakeEvtName}
+		prox.publish(eventWithHandler)
+		prox.publish(eventWithHandler)
+		time.Sleep(10 * time.Millisecond) // to be after the timeout
+		cancel()
+		for {
+			select {
+			case <-done:
+				require.Equal(t, fakeApp.getEvents()[0].name, fakeEvtMultipleName)
+				return
+			}
+		}
+	})
 
-// 	t.Run("an event without a handler bypasses the reducer", func(t *testing.T) {
-// 		defer fakeApp.reset()
-// 		eventWithoutHandler := &event{
-// 			name:     "test",
-// 			messages: []string{"message1"},
-// 		}
-// 		prox.publish(eventWithoutHandler)
-// 		require.Contains(t, fakeApp.events, eventWithoutHandler)
-// 		require.Equal(t, "message1", fakeApp.events[0].messages[0])
-// 	})
-
-// 	t.Run("an event with a handler is processed via the reducer", func(t *testing.T) {
-// 		defer fakeApp.reset()
-// 		eventWithHandler := &event{
-// 			name:     typing,
-// 			messages: []string{"message1"},
-// 		}
-// 		prox.publish(eventWithHandler)
-// 		time.Sleep(time.Millisecond)
-// 		require.Contains(t, fakeApp.events, eventWithHandler)
-// 		require.Equal(t, "proxied_message1", fakeApp.events[0].messages[0])
-// 	})
-
-// 	t.Run("multiple events via single handler are handled", func(t *testing.T) {
-// 		defer fakeApp.reset()
-// 		evt1 := &event{name: typing, messages: []string{"message1"}}
-// 		prox.publish(evt1)
-// 		evt2 := &event{name: typing, messages: []string{"message2"}}
-// 		prox.publish(evt2)
-// 		time.Sleep(100 * time.Millisecond)
-// 		require.Contains(t, fakeApp.events, evt1)
-// 		require.Contains(t, fakeApp.events, evt2)
-// 		require.Equal(t, "proxied_message1", fakeApp.events[0].messages[0])
-// 		require.Equal(t, "proxied_message2", fakeApp.events[1].messages[0])
-// 	})
-// }
+	t.Run("multiple events go through the reducer after max batch size", func(t *testing.T) {
+		fakeApp := &testApp{}
+		fakeEvtName := eventType("shouldnotget")
+		fakeEvtMultipleName := eventType("fakeeventmultiple")
+		testHandler := &handler{
+			maxSize:      1,
+			waitDuration: time.Millisecond,
+			matchCriteria: func(evt *event) (string, bool) {
+				if evt.name != fakeEvtName {
+				}
+				return "testQueue", true
+			},
+			batchReducer: func(events []*event) []*event {
+				return []*event{{name: fakeEvtMultipleName}}
+			},
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		prox, done := newProxy(ctx, fakeApp, []*handler{testHandler})
+		eventWithHandler := &event{name: fakeEvtName}
+		prox.publish(eventWithHandler)
+		prox.publish(eventWithHandler)
+		cancel()
+		for {
+			select {
+			case <-done:
+				require.Equal(t, fakeApp.getEvents()[0].name, fakeEvtMultipleName)
+				return
+			}
+		}
+	})
+}
