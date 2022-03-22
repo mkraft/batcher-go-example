@@ -6,9 +6,6 @@ go run .
 
 TODO:
 
-- [ ] test
-- [ ] probably some refactoring related to testability 
+- [ ] more tests
 - [ ] benchmark
-- [ ] do I need to notify the backend client that the proxy is stopped or is the context interface enough?
 - [ ] is there a better way of controlling shared access to the `queues map[string]chan *event` other than the `sync.Mutex`?
-- [ ] should the `(*proxy).Publish` method continue to function once the proxy has been cancelled (bypassing the handlers)?
