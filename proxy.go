@@ -25,14 +25,16 @@ type handler struct {
 
 	// batchReducer takes the list of enqueued messages and combines them into one or many messages
 	// using whatever logic it wants.
-	batchReducer func([]*event) []*event
+	batchReducer reducerFunc
 }
+
+type reducerFunc func(events []*event) []*event
 
 type proxy struct {
 	in chan *event
 }
 
-func (p *proxy) listenAndServeHandlers(ctx context.Context, handlers []*handler, out chan []*event) {
+func (p *proxy) startCoordinator(ctx context.Context, handlers []*handler, out chan []*event) {
 	var wg sync.WaitGroup
 	mu := sync.Mutex{}
 	queues := make(map[string]chan *event)
@@ -54,6 +56,8 @@ func (p *proxy) listenAndServeHandlers(ctx context.Context, handlers []*handler,
 				queueIn, queueExists := queues[queueName]
 				mu.Unlock()
 				if !queueExists {
+					log.Printf("creating new named queue: %s", queueName)
+
 					queueIn = make(chan *event, handler.maxSize)
 					queueDone := make(chan bool)
 					wg.Add(1)
@@ -93,17 +97,13 @@ func (p *proxy) listenAndServeHandlers(ctx context.Context, handlers []*handler,
 
 func newProxy(ctx context.Context, pub publisher, handlers []*handler) *proxy {
 	out := make(chan []*event)
-
 	newProxy := &proxy{in: make(chan *event)}
-
-	go newProxy.listenAndServeHandlers(ctx, handlers, out)
-
-	go listenAndPublish(out, pub)
-
+	go newProxy.startCoordinator(ctx, handlers, out)
+	go listenForOutEvents(out, pub)
 	return newProxy
 }
 
-func listenAndPublish(out chan []*event, pub publisher) {
+func listenForOutEvents(out chan []*event, pub publisher) {
 	for e := range out {
 		for _, evt := range e {
 			pub.publish(evt)
@@ -111,11 +111,23 @@ func listenAndPublish(out chan []*event, pub publisher) {
 	}
 }
 
-type eventsReducer func(events []*event) []*event
-
-func handleQueue(ctx context.Context, in chan *event, out chan []*event, done chan bool, waitDur time.Duration, maxBatchCount int, reduce eventsReducer) {
+func handleQueue(ctx context.Context, in chan *event, out chan []*event, done chan bool, waitDur time.Duration, maxBatchCount int, reduce reducerFunc) {
 	queue := []*event{}
 	timeout := time.After(waitDur)
+
+	queueDone := func(queueLen int, reason string) {
+		switch queueLen {
+		case 0:
+			// don't send anything on the out channel
+		case 1:
+			out <- queue
+		default:
+			out <- reduce(queue)
+		}
+		done <- true
+		log.Printf("queue done: %s", reason)
+	}
+
 	for {
 		select {
 		case evt := <-in:
@@ -127,31 +139,10 @@ func handleQueue(ctx context.Context, in chan *event, out chan []*event, done ch
 				return
 			}
 		case <-ctx.Done():
-			queueLen := len(queue)
-			switch queueLen {
-			case 0:
-				// don't send anything on the out channel
-			case 1:
-				out <- queue
-			default:
-				out <- reduce(queue)
-			}
-			done <- true
-			log.Print("queue done: context")
+			queueDone(len(queue), "context")
 			return
 		case <-timeout:
-			timeout = time.After(waitDur)
-			queueLen := len(queue)
-			switch queueLen {
-			case 0:
-				// don't send anything on the out channel
-			case 1:
-				out <- queue
-			default:
-				out <- reduce(queue)
-			}
-			done <- true
-			log.Print("queue done: timeout")
+			queueDone(len(queue), "timeout")
 			return
 		}
 	}
