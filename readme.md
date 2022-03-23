@@ -2,12 +2,12 @@ Toying with the code for [a WebSocket event batching proxy idea](https://gist.gi
 
 ```
 go run .
-go test
+go test -v
 ```
 
 TODO:
 
-- [ ] there are races (`go test -race` and `go run -race .`)
+- [ ] there are races (`go test -race` and `go run -race . -v`)
 - [ ] more tests
 - [ ] benchmark
 - [ ] is there a better way of controlling shared access to the `queues map[string]chan *event` other than the `sync.Mutex`?
