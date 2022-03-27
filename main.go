@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	batchelor "github.com/mkraft/batchelorg"
@@ -31,11 +32,11 @@ func main() {
 			return "myMessages", true
 		},
 		Reduce: func(messages []batchelor.Message) batchelor.Message {
-			var combinedData string
+			var allData []string
 			for _, message := range messages {
-				combinedData = fmt.Sprintf("%v:%v", combinedData, message.Data())
+				allData = append(allData, message.Data().(string))
 			}
-			return &message{id: "myCombinedMessages", data: combinedData}
+			return &message{id: "myCombinedMessages", data: strings.Join(allData, ":")}
 		},
 	}
 
@@ -43,20 +44,13 @@ func main() {
 
 	proxy := batchelor.NewProxy(ctx, []*batchelor.Handler{myMessageHandler})
 
-	done := make(chan bool)
-
+	// set a timeout to shut down the proxy
 	go func() {
 		time.Sleep(10 * time.Second)
 		cancel()
-		done <- true
 	}()
 
-	go func() {
-		for msg := range proxy.Out {
-			fmt.Println(msg)
-		}
-	}()
-
+	// fake a stream of incoming messages
 	go func() {
 		for i := 0; ; i++ {
 			time.Sleep(250 * time.Millisecond)
@@ -64,5 +58,7 @@ func main() {
 		}
 	}()
 
-	<-done
+	for msg := range proxy.Out {
+		fmt.Println(msg)
+	}
 }
