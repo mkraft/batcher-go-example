@@ -1,4 +1,4 @@
-An example of using https://github.com/mkraft/batchelorg.
+An example of using https://github.com/mkraft/batchelorgo.
 
 ```shell
 $ go run .

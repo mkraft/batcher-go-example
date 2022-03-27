@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	batchelor "github.com/mkraft/batchelorg"
+	batchelor "github.com/mkraft/batchelorgo"
 )
 
 type message struct {
