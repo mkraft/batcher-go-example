@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	joinTeamHandler := &batchelor.Handler{
+	myMessageHandler := &batchelor.Handler{
 		Wait: time.Second,
 		Match: func(evt *batchelor.Message) (string, bool) {
 			if evt.Type != "myMessage" {
@@ -25,9 +25,10 @@ func main() {
 			return &batchelor.Message{Type: "myCombinedMessages", Data: combinedData}
 		},
 	}
-	handlers := []*batchelor.Handler{joinTeamHandler}
+
 	ctx, cancel := context.WithCancel(context.Background())
-	proxy := batchelor.NewProxy(ctx, handlers)
+
+	proxy := batchelor.NewProxy(ctx, []*batchelor.Handler{myMessageHandler})
 
 	done := make(chan bool)
 
