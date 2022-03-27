@@ -8,21 +8,34 @@ import (
 	batchelor "github.com/mkraft/batchelorg"
 )
 
+type message struct {
+	id   string
+	data interface{}
+}
+
+func (m *message) Type() string {
+	return m.id
+}
+
+func (m *message) Data() interface{} {
+	return m.data
+}
+
 func main() {
 	myMessageHandler := &batchelor.Handler{
 		Wait: time.Second,
-		Match: func(evt *batchelor.Message) (string, bool) {
-			if evt.Type != "myMessage" {
+		Match: func(msg batchelor.Message) (string, bool) {
+			if msg.Type() != "myMessage" {
 				return "", false
 			}
 			return "myMessages", true
 		},
-		Reduce: func(messages []*batchelor.Message) *batchelor.Message {
+		Reduce: func(messages []batchelor.Message) batchelor.Message {
 			var combinedData string
 			for _, message := range messages {
-				combinedData = fmt.Sprintf("%v:%v", combinedData, message.Data)
+				combinedData = fmt.Sprintf("%v:%v", combinedData, message.Data())
 			}
-			return &batchelor.Message{Type: "myCombinedMessages", Data: combinedData}
+			return &message{id: "myCombinedMessages", data: combinedData}
 		},
 	}
 
@@ -47,7 +60,7 @@ func main() {
 	go func() {
 		for i := 0; ; i++ {
 			time.Sleep(250 * time.Millisecond)
-			proxy.In(&batchelor.Message{Type: "myMessage", Data: fmt.Sprintf("data%d", i)})
+			proxy.In(&message{id: "myMessage", data: fmt.Sprintf("data%d", i)})
 		}
 	}()
 
