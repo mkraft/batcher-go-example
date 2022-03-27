@@ -7,7 +7,3 @@ go test
 
 TODO:
 
-- [ ] there are races (`go test -race` and `go run -race .`)
-- [ ] more tests
-- [ ] benchmark
-- [ ] is there a better way of controlling shared access to the `queues map[string]chan *event` other than the `sync.Mutex`?

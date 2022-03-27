@@ -3,74 +3,52 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
 	"time"
+
+	batchelor "github.com/mkraft/batchelorg"
 )
 
 func main() {
-	joinTeamHandler := &handler{
-		maxSize: 10,
-
-		waitDuration: 3 * time.Second,
-
-		matchCriteria: func(evt *event) (string, bool) {
-			if evt.name != teamJoin {
+	joinTeamHandler := &batchelor.Handler{
+		Wait: time.Second,
+		Match: func(evt *batchelor.Message) (string, bool) {
+			if evt.Type != "myMessage" {
 				return "", false
 			}
-			queueName := fmt.Sprintf("team_join:team/%s", evt.teamID)
-			return queueName, true
+			return "myMessages", true
 		},
-
-		batchReducer: func(events []*event) []*event {
-			return []*event{batchTeamJoins(events)}
+		Reduce: func(messages []*batchelor.Message) *batchelor.Message {
+			var combinedData string
+			for _, message := range messages {
+				combinedData = fmt.Sprintf("%v:%v", combinedData, message.Data)
+			}
+			return &batchelor.Message{Type: "myCombinedMessages", Data: combinedData}
 		},
 	}
-
-	handlers := []*handler{joinTeamHandler}
-
-	myApp := &app{}
-
+	handlers := []*batchelor.Handler{joinTeamHandler}
 	ctx, cancel := context.WithCancel(context.Background())
+	proxy := batchelor.NewProxy(ctx, handlers)
 
-	myProxy, done := newProxy(ctx, myApp, handlers)
+	done := make(chan bool)
 
 	go func() {
 		time.Sleep(10 * time.Second)
-		log.Print("server triggered a cancellation")
 		cancel()
-		for {
-			select {
-			case <-done:
-				os.Exit(0)
-				return
-			}
+		done <- true
+	}()
+
+	go func() {
+		for msg := range proxy.Out {
+			fmt.Println(msg)
 		}
 	}()
 
-	// simulate someone joining teamA
 	go func() {
-		log.Print("server publishing a teamJoin event")
-		myProxy.publish(&event{
-			name:   teamJoin,
-			teamID: "teamA",
-			data:   randomString(26),
-		})
+		for i := 0; ; i++ {
+			time.Sleep(250 * time.Millisecond)
+			proxy.In(&batchelor.Message{Type: "myMessage", Data: fmt.Sprintf("data%d", i)})
+		}
 	}()
 
-	// simulate some event that doesn't use the handlers
-	go func() {
-		log.Print("server publishing an event without a handler")
-		myProxy.publish(&event{name: "foobar"})
-	}()
-
-	// simulate multiple people joining teamB
-	for range time.Tick(time.Second) {
-		log.Print("server publishing a teamJoin event")
-		myProxy.publish(&event{
-			name:   teamJoin,
-			teamID: "teamB",
-			data:   randomString(26),
-		})
-	}
+	<-done
 }
