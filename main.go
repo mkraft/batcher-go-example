@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	batchelor "github.com/mkraft/batchelorgo"
@@ -18,8 +17,8 @@ func (m *message) Type() string {
 	return m.id
 }
 
-func (m *message) Data() interface{} {
-	return m.data
+func (m *message) String() string {
+	return fmt.Sprintf("id: %s, data: %v", m.id, m.data)
 }
 
 func main() {
@@ -30,13 +29,6 @@ func main() {
 				return "", false
 			}
 			return "myMessages", true
-		},
-		Reduce: func(messages []batchelor.Message) batchelor.Message {
-			var allData []string
-			for _, message := range messages {
-				allData = append(allData, message.Data().(string))
-			}
-			return &message{id: "myCombinedMessages", data: strings.Join(allData, ":")}
 		},
 	}
 
