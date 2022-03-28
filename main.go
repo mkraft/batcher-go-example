@@ -25,6 +25,7 @@ func main() {
 			msg, ok := raw.(*message)
 			if !ok {
 				log.Print("conversion error")
+				return "", false
 			}
 			if msg.id != "myMessage" {
 				return "", false
