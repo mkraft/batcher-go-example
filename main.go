@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	batchelor "github.com/mkraft/batchelorgo"
+	batcher "github.com/mkraft/batcher-go"
 )
 
 type message struct {
@@ -13,7 +13,7 @@ type message struct {
 	data interface{}
 }
 
-func (m *message) Type() string {
+func (m *message) ID() string {
 	return m.id
 }
 
@@ -22,10 +22,10 @@ func (m *message) String() string {
 }
 
 func main() {
-	myMessageHandler := &batchelor.Handler{
+	myMessageHandler := &batcher.Handler{
 		Wait: time.Second,
-		Match: func(msg batchelor.Message) (string, bool) {
-			if msg.Type() != "myMessage" {
+		Match: func(msg batcher.Message) (string, bool) {
+			if msg.ID() != "myMessage" {
 				return "", false
 			}
 			return "myMessages", true
@@ -34,7 +34,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	proxy := batchelor.NewProxy(ctx, []*batchelor.Handler{myMessageHandler})
+	proxy := batcher.NewProxy(ctx, []*batcher.Handler{myMessageHandler})
 
 	// set a timeout to shut down the proxy
 	go func() {
