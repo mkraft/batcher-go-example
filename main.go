@@ -50,7 +50,8 @@ func main() {
 		}
 	}()
 
-	for msg := range proxy.Out {
-		fmt.Println(msg)
+	// batches are sent out, as configured by the handler logic
+	for batch := range proxy.Out {
+		fmt.Println(batch)
 	}
 }
