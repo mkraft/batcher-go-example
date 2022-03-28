@@ -2,4 +2,4 @@ module example.com/m
 
 go 1.18
 
-require github.com/mkraft/batchelorgo v0.0.3-alpha
+require github.com/mkraft/batcher-go v0.0.1-alpha
