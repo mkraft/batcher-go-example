@@ -13,10 +13,6 @@ type message struct {
 	data interface{}
 }
 
-func (m *message) ID() string {
-	return m.id
-}
-
 func (m *message) String() string {
 	return fmt.Sprintf("id: %s, data: %v", m.id, m.data)
 }
@@ -24,8 +20,12 @@ func (m *message) String() string {
 func main() {
 	myMessageHandler := &batcher.Handler{
 		Wait: time.Second,
-		Match: func(msg batcher.Message) (string, bool) {
-			if msg.ID() != "myMessage" {
+		Match: func(raw interface{}) (string, bool) {
+			msg, ok := raw.(*message)
+			if !ok {
+				panic("conversion error")
+			}
+			if msg.id != "myMessage" {
 				return "", false
 			}
 			return "myMessages", true
