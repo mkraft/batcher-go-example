@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/mkraft/batcher-go"
@@ -23,7 +24,7 @@ func main() {
 		Match: func(raw interface{}) (string, bool) {
 			msg, ok := raw.(*message)
 			if !ok {
-				panic("conversion error")
+				log.Print("conversion error")
 			}
 			if msg.id != "myMessage" {
 				return "", false
