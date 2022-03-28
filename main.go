@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	batcher "github.com/mkraft/batcher-go"
+	"github.com/mkraft/batcher-go"
 )
 
 type message struct {
@@ -34,7 +34,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	proxy := batcher.NewProxy(ctx, []*batcher.Handler{myMessageHandler})
+	proxy := batcher.NewBatcher(ctx, []*batcher.Handler{myMessageHandler})
 
 	// set a timeout to shut down the proxy
 	go func() {
